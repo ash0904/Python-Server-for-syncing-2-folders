@@ -4,6 +4,7 @@ sock = socket.socket()
 host = "127.0.0.1"
 port = 60000
 
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind((host, port))
 sock.listen(5) # 5 client concurrently connected
 
@@ -12,13 +13,28 @@ def Main():
     client, addr = sock.accept() # addr = (ip,port) , waiting for connection
     l = raw_input("prompt>")
     while (l != "quit"):
-       client.send(l) # send client message l
-       data = client.recv(1024)
-       print data
-       l = raw_input("prompt>")
-    print('Done sending')
+        client.send(l) # send client message l
+        args = l.split()
+        if args[0] == "download":
+            data = "ktb"
+            fh = open(args[2], 'a+')
+            while True:
+                data = client.recv(1024)
+                if data == "zqqx":
+                    break
+                fh.write(data)
+            fh.close()
+            print "Download complete!"
+            print "File "+args[2]
+        else:
+            data = client.recv(1024)
+            print data
+        l = raw_input("prompt>")
+
+    print('Connection Closed :(')
     client.send('Over')
     client.close()
 
 if __name__ == "__main__":
     Main()
+    sock.shutdown(socket.SHUT_RDWR)

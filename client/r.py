@@ -14,11 +14,34 @@ def Main():
             break
         print('msg = %s' %(data))
         args = data.split()
-        if args[0]== "index":
-            proc = subprocess.Popen('ls', stdout=subprocess.PIPE)
-            ls = proc.stdout.read()
-            print ls
+        if args and args[0]== "index":
+            if len(args) == 1:
+                ls = os.popen('ls').read()
+            elif args[1] == "longlist" :
+                ls = os.popen('ls -l').read()
+            # elif args[1] == "shortlist" :
+            #     proc = subprocess.Popen('ls', stdout=subprocess.PIPE)
+            #     ls = proc.stdout.read()
+            else:
+                ls = "please check the syntax"
             sock.send(ls)
+        elif args and args[0] == "hash":
+            if len(args) < 2:
+                ck = "please provide arguments"
+            elif args[1] == "verify":
+                if not args[2]:
+                    ck = "Enter File name"
+                else:
+                    comm = "cksum " + args[2]
+                    ck = os.popen(comm).read()
+                # print ck
+                sock.send(ck)
+        elif args and args[0] == "download":
+            with open(args[2]) as fileobject:
+                for line in fileobject:
+                    sock.send(line)
+            time.sleep(1)
+            sock.send("zqqx")
     sock.close()
     print('connection closed')
 
