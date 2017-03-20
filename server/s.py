@@ -11,7 +11,7 @@ sock.listen(5) # 5 client concurrently connected
 def Main():
     print 'Server listening....'
     client, addr = sock.accept() # addr = (ip,port) , waiting for connection
-    l = raw_input("prompt>")
+    l = raw_input("prompt> ")
     while (l != "quit"):
         client.send(l) # send client message l
         args = l.split()
@@ -20,18 +20,20 @@ def Main():
             fh = open(args[2], 'a+')
             while True:
                 data = client.recv(1024)
-                if data == "zqqx":
+                if data == "zqqxq":
                     break
                 fh.write(data)
             fh.close()
+            print "checking MD5sum"
+            
             print "Download complete!"
             print "File "+args[2]
         else:
             data = client.recv(1024)
             print data
-        l = raw_input("prompt>")
+        l = raw_input("prompt> ")
 
-    print('Connection Closed :(')
+    print('Connection Closed, Bye!')
     client.send('Over')
     client.close()
 
