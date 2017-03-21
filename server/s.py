@@ -1,7 +1,6 @@
-import socket,os,time,sys,subprocess
+import socket,os,time,commands,sys,subprocess
 import datetime
 import hashlib
-
 
 #TCP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,7 +40,7 @@ def Main():
         args = data.split()
         if not args:
             ls = "Please enter the command"
-            print ls
+            # print ls
             client.send(ls)
         elif args[0]== "index":
             if len(args) == 1:
@@ -76,6 +75,11 @@ def Main():
                     if check_time(ts,st,end):
                         lis.append(files[it] + " " + str(siz) +" "+ str(ts) + " " + typ)
                     ls = "\n".join(lis)
+            elif args[1] == "regex" and len(args) == 3:
+                comm = "ls | grep " + args[2] + " ";
+                status, output = commands.getstatusoutput(comm)
+                # print output
+                ls = output
             else:
                 ls = "please check the syntax"
             client.send(ls)
@@ -86,30 +90,38 @@ def Main():
                 if not args[2]:
                     ck = "Enter File name"
                 else:
-                    comm = "cksum " + args[2]
-                    ck = os.popen(comm).read()
+                    ck = hashlib.md5(open(args[2], 'rb').read()).hexdigest()
                 # print ck
             else:
                 ck = "please check the syntax"
             client.send(ck)
         elif args[0] == "download" and len(args)==3:
-            if args[1] == "TCP":
-                with open(args[2]) as fileobject:
-                    for line in fileobject:
-                        client.send(line)
-                time.sleep(1)
-                client.send("zqqxq")
-            elif args[1] == "UDP":
-
-                with open(args[2]) as fileobject:
-                    for line in fileobject:
-                        sockudp.sendto(line, (hostudp, portudp))
-                time.sleep(1)
-                var = "zqqxq" + hashlib.md5(open(args[2], 'rb').read()).hexdigest()
-                sockudp.sendto(var, (hostudp, portudp))
+            if os.path.isfile(args[2]):
+                client.send("Exist")
             else:
-                ls = "Enter TCP or UDP as second argument"
-                client.send(ls)
+                client.send("Not Exist")
+            if os.path.isfile(args[2]):
+                if args[1] == "TCP":
+                    with open(args[2]) as fileobject:
+                        for line in fileobject:
+                            client.send(line)
+                    time.sleep(1)
+                    client.send("zqqxq")
+
+                elif args[1] == "UDP":
+                    c=1
+                    with open(args[2]) as fileobject:
+                        for line in fileobject:
+                            sockudp.sendto(line, (hostudp, portudp))
+                            c+=1
+                            # print "data s= ", line
+                    time.sleep(1)
+                    print "# of times data send: ",c
+                    var = "zqqxq" + hashlib.md5(open(args[2], 'rb').read()).hexdigest()
+                    sockudp.sendto(var, (hostudp, portudp))
+                else:
+                    ls = "Enter TCP or UDP as second argument"
+                    client.send(ls)
         else:
             ls = "Please check command or Format"
             client.send(ls)
