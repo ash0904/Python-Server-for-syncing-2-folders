@@ -91,7 +91,15 @@ def Main():
                     ck = "Enter File name"
                 else:
                     ck = hashlib.md5(open(args[2], 'rb').read()).hexdigest()
-                # print ck
+                    ts = get_mtime(args[2])
+                    ck = ck +" "+ ts
+            elif args[1] == "checkall":
+                files = os.popen('ls').read().split()
+                for it in range(len(files)):
+                    ck = hashlib.md5(open(files[it], 'rb').read()).hexdigest()
+                    ts = get_mtime(files[it])
+                    files[it] = files[it] + " " + ck +" "+ts
+                ck = "\n".join(files)
             else:
                 ck = "please check the syntax"
             client.send(ck)
@@ -109,14 +117,11 @@ def Main():
                     client.send("zqqxq")
 
                 elif args[1] == "UDP":
-                    c=1
                     with open(args[2]) as fileobject:
                         for line in fileobject:
                             sockudp.sendto(line, (hostudp, portudp))
-                            c+=1
                             # print "data s= ", line
                     time.sleep(1)
-                    print "# of times data send: ",c
                     var = "zqqxq" + hashlib.md5(open(args[2], 'rb').read()).hexdigest()
                     sockudp.sendto(var, (hostudp, portudp))
                 else:
@@ -133,4 +138,3 @@ def Main():
 if __name__ == "__main__":
     Main()
     sock.shutdown(socket.SHUT_RDWR)
-    # sockudp.shutdown(socket.SHUT_RDWR)
