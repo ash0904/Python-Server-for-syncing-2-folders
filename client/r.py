@@ -5,38 +5,58 @@ import hashlib
 def get_mtime(filename):
     t = os.path.getmtime(filename)
     return datetime.datetime.fromtimestamp(t)
-sock = socket.socket()
+
+#TCP socket    
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = "127.0.0.1"
 port = 60000
-
 sock.connect((host, port))
 
+#UDP socket
+sockudp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+hostudp = "127.0.0.1"
+portudp = 61000
+sockudp.bind((hostudp, portudp))
+
 def Main():
-    # print 'Server listening....'
-    # client, addr = sock.accept() # addr = (ip,port) , waiting for connection
     l = raw_input("prompt> ")
     while (l != "quit"):
-        sock.send(l) # send client message l
+        sock.send(l) # send server message l
         args = l.split()
-        if args[0] == "download":
-            data = "ktb"
-            fh = open(args[2], 'a+')
-            while True:
-                data = sock.recv(1024)
-                if data == "zqqxq":
-                    break
-                fh.write(data)
-            fh.close()
-            # print "checking MD5sum"
-            # print "Download complete!"
-            print "File "+args[2]
+        if args[0] == "download" and len(args) == 3:
+            if args[1] == "TCP":
+                fh = open(args[2], 'a+')
+                while True:
+                    data = sock.recv(1024)
+                    if data == "zqqxq":
+                        break
+                    fh.write(data)
+                fh.close()
+                print "File Received: "+args[2]
+
+            elif args[1] == "UDP":
+                fh = open(args[2], 'a+')
+                while True:
+                    data, addre = sockudp.recvfrom(1024)
+                    if data[:5] == "zqqxq":
+                        break
+                    fh.write(data)
+                fh.close()
+
+                md5 = hashlib.md5(open(args[2], 'rb').read()).hexdigest()
+                recv_md5 = data[5:]
+                if recv_md5 == md5:
+                    print "File Receive succesfull"
+                else:
+                    print "File Receive unsuccesfull"
+                sockudp.close()
         else:
             data = sock.recv(1024)
             print data
         l = raw_input("prompt> ")
 
     print('Connection Closed, Bye!')
-    sock.send('Over')
+    sock.send('Close')
     sock.close()
 
 if __name__ == "__main__":
