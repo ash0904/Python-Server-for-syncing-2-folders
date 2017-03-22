@@ -2,10 +2,6 @@ import socket,os,time,sys,subprocess
 import datetime
 import hashlib
 
-def get_mtime(filename):
-    t = os.path.getmtime(filename)
-    return datetime.datetime.fromtimestamp(t)
-
 #TCP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = "127.0.0.1"
@@ -14,9 +10,8 @@ sock.connect((host, port))
 
 #UDP socket
 sockudp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-hostudp = "127.0.0.1"
 portudp = 61000
-sockudp.bind((hostudp, portudp))
+sockudp.bind((host, portudp))
 
 def Main():
     l = raw_input("prompt> ")
@@ -58,7 +53,7 @@ def Main():
                         l="".join(l)
                         tries += 1
                         # print "l= ", l
-                        if tries <11:
+                        if tries <10:
                             continue
                         else:
                             tries=0

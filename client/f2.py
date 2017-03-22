@@ -1,19 +1,7 @@
 import socket,os,time,commands,sys,subprocess
 import datetime
 import hashlib
-
-#TCP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host = "127.0.0.1"
-port = 60000
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.bind((host, port))
-sock.listen(5) # 5 client concurrently connected
-
-#UDP socket
-sockudp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-hostudp = "127.0.0.1"
-portudp = 61000
+from threading import Thread
 
 def get_mtime(filename):
     t = time.ctime(os.path.getmtime(filename))
@@ -91,7 +79,7 @@ def hash_func(args,client):
         ck = "please check the syntax"
     client.send(ck)
 
-def download_func(args,client):
+def download_func(args,client,portudpi):
     if os.path.isfile(args[2]):
         client.send("Exist")
     else:
@@ -107,30 +95,121 @@ def download_func(args,client):
         elif args[1] == "UDP":
             with open(args[2]) as fileobject:
                 for line in fileobject:
-                    sockudp.sendto(line, (hostudp, portudp))
+                    sockudp.sendto(line, (host, portudpi))
                     # print "data s= ", line
             time.sleep(1)
             var = "zqqxq" + hashlib.md5(open(args[2], 'rb').read()).hexdigest()
-            sockudp.sendto(var, (hostudp, portudp))
+            sockudp.sendto(var, (host, portudp))
         else:
             ls = "Enter TCP or UDP as second argument"
             client.send(ls)
 
 
+class ServerThread(Thread):
+    def __init__(self, val):
+        Thread.__init__(self)
+        self.val = val
 
-def Main():
+    def run(self):
+        port = 50000
+        portudp = 51000
+        #TCP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((host, port))
+        sock.listen(5) # 5 client concurrently connected
+
+        #UDP socket
+        sockudp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        Mains(sock,port,sockudp,portudp)
+        sock.shutdown(socket.SHUT_RDWR)
+
+class ClientThread(Thread):
+    def __init__(self, val):
+        Thread.__init__(self)
+        self.val = val
+
+    def run(self):
+        #TCP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        port = 60000
+        sock.connect((host, port))
+
+        #UDP socket
+        sockudp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        portudp = 61000
+        sockudp.bind((host, portudp))
+
+        l = raw_input("prompt> ")
+        tries=0
+        while (l != "quit"):
+            sock.send(l) # send server message l
+            args = l.split()
+            if args[0] == "download" and len(args) == 3:
+                if os.path.isfile(args[2]):
+                    os.remove(args[2])
+                if sock.recv(1024)  == "Exist":
+                    if args[1] == "TCP":
+                        fh = open(args[2], 'a+')
+                        while True:
+                            data = sock.recv(1024)
+                            if data == "zqqxq":
+                                break
+                            fh.write(data)
+                        fh.close()
+                        print "File Received: "+args[2]
+
+                    elif args[1] == "UDP":
+                        fh = open(args[2], 'a+')
+                        while True:
+                            data, addre = sockudp.recvfrom(1024)
+                            # print "data s= ", data
+                            if data[:5] == "zqqxq":
+                                break
+                            fh.write(data)
+                        fh.close()
+                        md5 = hashlib.md5(open(args[2], 'rb').read()).hexdigest()
+                        recv_md5 = data[5:]
+                        print "md5 =     ",md5
+                        print "recv_md5= ",recv_md5
+                        if recv_md5 == md5:
+                            print "File Receive succesfull"
+                        else:
+                            print "File Receive unsuccesfull"
+                            l="".join(l)
+                            tries += 1
+                            # print "l= ", l
+                            if tries <10:
+                                continue
+                            else:
+                                tries=0
+                                print "Unsuccesful after 10 tries"
+                else:
+                    print "No such File Exist"
+            else:
+                data = sock.recv(1024)
+                print data
+            l = raw_input("prompt> ")
+
+        print('Connection Closed, Bye!')
+        sock.send('Close')
+        sock.close()
+        sockudp.close()
+
+
+def Mains(sock,port,sockudp,portudp):
     print('server starts...')
     client, addr = sock.accept() # addr = (ip,port) , waiting for connection
     while True:
         data = client.recv(1024)
-        print('request = %s' %(data))
+        # print('request = %s' %(data))
         if data=="Close":
             break
         args = data.split()
         if not args:
             err = "Please enter the command"
             client.send(err)
-            
+
         elif args[0]== "index":
             index_func(args,client)
 
@@ -138,17 +217,28 @@ def Main():
             hash_func(args,client)
 
         elif args[0] == "download" and len(args)==3:
-            download_func(args,client)
+            download_func(args,client,portudp)
 
         else:
             err = "Please check command or Format"
             client.send(err)
     client.close()
     sockudp.close()
-    print('connection closed, Bye!')
 
 
+host = "127.0.0.1"
 if __name__ == "__main__":
-    Main()
-    sock.shutdown(socket.SHUT_RDWR)
-    # sockudp.shutdown(socket.SHUT_RDWR)
+
+    sthread = ServerThread(1)
+    sthread.setName("server")
+
+    cthread = ClientThread(2)
+    cthread.setName("client")
+
+    sthread.start()
+    time.sleep(5)
+    cthread.start()
+
+    sthread.join()
+    cthread.join()
+    print('connection closed, Bye!')
