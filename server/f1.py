@@ -16,7 +16,8 @@ def check_time(t1,st1,end1):
         return True
     else:
         return False
-def index_func(args,client):
+
+def index_func(args):
     if len(args) == 1:
         temp = os.popen('ls').read().split()
         ls = "\n".join(temp)
@@ -52,13 +53,12 @@ def index_func(args,client):
     elif args[1] == "regex" and len(args) == 3:
         comm = "ls | grep " + args[2] + " ";
         status, output = commands.getstatusoutput(comm)
-        # print output
         ls = output
     else:
         ls = "please check the syntax"
-    client.send(ls)
+    return ls
 
-def hash_func(args,client):
+def hash_func(args):
     if len(args) < 2:
         ck = "please provide arguments"
     elif args[1] == "verify":
@@ -67,7 +67,7 @@ def hash_func(args,client):
         else:
             ck = hashlib.md5(open(args[2], 'rb').read()).hexdigest()
             ts = get_mtime(args[2])
-            ck = ck +" "+ ts
+            ck = args[2] + " " + ck +" "+ ts
     elif args[1] == "checkall":
         files = os.popen('ls').read().split()
         for it in range(len(files)):
@@ -77,7 +77,7 @@ def hash_func(args,client):
         ck = "\n".join(files)
     else:
         ck = "please check the syntax"
-    client.send(ck)
+    return ck
 
 def download_func(args,client,portudpi):
     if os.path.isfile(args[2]):
@@ -104,6 +104,20 @@ def download_func(args,client,portudpi):
             ls = "Enter TCP or UDP as second argument"
             client.send(ls)
 
+def sync(client,portudp):
+    temp = os.listdir(os.curdir)
+    for f in temp:
+        comm = "hash verify "+f
+        a = comm.split()
+        det = hash_func(a)
+        client.send(det)
+        info = client.recv(1024)
+        if info == "download":
+            info = info + " TCP " + f
+            args = info.split()
+            download_func(args,client,portudp)
+    time.sleep(1)
+    client.send("over")
 
 class ServerThread(Thread):
     def __init__(self, val):
@@ -111,9 +125,9 @@ class ServerThread(Thread):
         self.val = val
 
     def run(self):
-        #TCP socket
         port = 60000
         portudp = 61000
+        #TCP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((host, port))
@@ -186,16 +200,38 @@ class ClientThread(Thread):
                                 print "Unsuccesful after 10 tries"
                 else:
                     print "No such File Exist"
+            elif l == "sync":
+                temp = os.listdir(os.curdir)
+                while True:
+                    data = sock.recv(1024)
+                    if data == "over":
+                        break
+                    args = data.split()
+                    if args[0] not in temp:
+                        sock.send("download")
+                        if os.path.isfile(args[0]):
+                            os.remove(args[0])
+                        if sock.recv(1024)  == "Exist":
+                            fh = open(args[0], 'a+')
+                            while True:
+                                data = sock.recv(1024)
+                                if data == "zqqxq":
+                                    break
+                                fh.write(data)
+                            fh.close()
+
+                    else:
+                        sock.send("present")
             else:
                 data = sock.recv(1024)
                 print data
-            l = raw_input("prompt> ")
-
-        print('Connection Closed, Bye!')
+            if l!= "sync":
+                l = "sync"
+            else:
+                l = raw_input("prompt> ")
         sock.send('Close')
         sock.close()
         sockudp.close()
-
 
 def Mains(sock,port,sockudp,portudp):
     print('server starts...')
@@ -211,14 +247,17 @@ def Mains(sock,port,sockudp,portudp):
             client.send(err)
 
         elif args[0]== "index":
-            index_func(args,client)
+            ls = index_func(args)
+            client.send(ls)
 
         elif args[0] == "hash":
-            hash_func(args,client)
+            ck = hash_func(args)
+            client.send(ck)
 
         elif args[0] == "download" and len(args)==3:
             download_func(args,client,portudp)
-
+        elif args[0] == "sync":
+            sync(client,portudp)
         else:
             err = "Please check command or Format"
             client.send(err)
